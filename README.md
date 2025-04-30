@@ -12,7 +12,7 @@ This project explores how income levels and literacy rates relate to crime rates
 ## Interactive Website
 
 Access the interactive visualizations and project summary here:  
-[GitHub Pages Site](https://yourusername.github.io/your-repo-name)
+[GitHub Pages Site](https://jw012.github.io/crime-literacy-income-analysis/)
 
 ## Final Report
 
