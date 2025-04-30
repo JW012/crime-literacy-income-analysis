@@ -1,0 +1,16 @@
+name: "crime-analysis"
+output_dir: "docs"
+
+navbar:
+  title: "Crime & Socioeconomics"
+  left:
+    - text: "Home"
+      href: index.html
+    - text: "Methods"
+      href: methodology.html
+
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    number_sections: true
