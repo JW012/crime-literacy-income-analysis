@@ -1,0 +1,88 @@
+---
+title: "Methodology and Analysis"
+author: "Justin Won"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    number_sections: true
+---
+
+## Overview
+
+This page describes the methods used to retrieve, process, analyze, and interpret the data related to income, literacy, and crime rates across countries in 2015. All data were sourced via the World Bank API using R.
+
+## Data Collection
+
+Data was retrieved using the `httr` and `jsonlite` packages in R from the World Bank Open Data API. The indicators used were:
+
+- **GDP per capita (NY.GDP.PCAP.CD)**: Income level
+- **Intentional homicides per 100,000 people (VC.IHR.PSRC.P5)**: Crime rate
+- **Adult literacy rate (SE.ADT.LITR.ZS)**: Education level
+
+Only data from 2015 was used, and non-country aggregates and missing entries were excluded. The final dataset included countries with complete values for all three variables.
+
+## Data Cleaning and Transformation
+
+- Removed rows with NA values in critical fields.
+- Merged the datasets by `country_code` and `year`.
+- Applied log-transformation to `income` and `crime_rate` due to right skewness.
+
+## Exploratory Analysis
+
+Summary statistics were calculated for all key variables (income, crime rate, literacy rate), including mean, median, and standard deviation. Boxplots and density plots were used to understand the distribution and variance by income group and literacy category.
+
+## Statistical Testing
+
+### Shapiro-Wilk Normality Test
+- Log-transformed `income` and `crime_rate` passed the test (p > 0.05).
+- `literacy_rate` did not pass (p < 0.05).
+
+### Correlation (Spearman)
+- Income vs Literacy Rate: **0.86** (strong positive)
+- Income vs Crime Rate: **-0.24** (weak negative)
+- Literacy vs Crime Rate: **-0.40** (moderate negative)
+
+## Modeling
+
+### Basic Linear Regression
+A multiple regression model was fit:
+
+```r
+lm(log(crime_rate) ~ log(income) + literacy_rate)
+```
+
+Diagnostics showed minor non-linearity and heteroscedasticity.
+
+### Weighted Regression
+To correct for non-constant variance, weights = `1 / income^2` were used. Final model:
+
+```r
+lm(log(crime_rate) ~ log(income) + literacy_rate, weights = 1 / income^2)
+```
+
+Results:
+- Adjusted R² = 0.267
+- F-statistic = 7.73, p < 0.01
+- **literacy_rate** was statistically significant (p = 0.015), income was not (p = 0.417)
+
+### Multicollinearity
+- VIF ≈ 5.48 for both predictors: moderate multicollinearity
+
+### Model Comparison
+- ANOVA test: Adding `literacy_rate` not significant (p = 0.186)
+- AIC: Slightly lower for model with only `log(income)`
+
+## Limitations
+
+- Small dataset size limits the use of machine learning methods
+- Literacy rate was not normally distributed
+- API data is limited to countries reporting for 2015
+- Possible unmeasured confounders such as inequality, governance, urbanization
+
+## Reproducibility
+All analysis was done in R and is fully reproducible with the scripts in this repo.
+
+---
+
+[← Back to Home](index.html)
