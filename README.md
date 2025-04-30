@@ -17,7 +17,7 @@ Access the interactive visualizations and project summary here:
 ## Final Report
 
 Download the full PDF report:  
-[midterm.pdf](Finalreport.pdf)
+[Finalreport.pdf](Finalreport.pdf)
 
 ## Data
 
