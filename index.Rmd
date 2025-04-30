@@ -1,0 +1,202 @@
+---
+title: "JSC370 WEBSITE"
+author: "Justin Won"
+date: "`r Sys.Date()`"
+output: html_document
+---
+## Project Overview
+
+This project investigates how income (GDP per capita in US dollars), literacy rate, and crime rate (intentional homicides per 100,000) are related across countries using 2015 data from the World Bank. The goal is to explore whether higher income or education levels are associated with lower crime. The analysis includes correlation testing, transformations, multiple regression, and model diagnostics.
+
+To check the country/region code details, check: http://api.worldbank.org/v2/country/all/indicator/VC.IHR.PSRC.P5?format=json&date=2015
+
+You can download the full report [here](Finalreport.pdf).
+
+```{r global_options, include = FALSE, warning = FALSE, message = FALSE}
+knitr::opts_chunk$set(fig.path='Figs/', echo = FALSE, warning = FALSE)
+```
+```{R, message = FALSE, warning = FALSE}
+library(httr)
+library(jsonlite)
+library(dplyr)
+library(ggplot2)
+```
+```{r, results = "hide"}
+url_income <- "http://api.worldbank.org/v2/country/all/indicator/NY.GDP.PCAP.CD?format=json&date=2015"
+
+response_income <- GET(url_income)
+data_income <- content(response_income, as = "text")
+json_income <- fromJSON(data_income, flatten = TRUE)
+
+df_income <- json_income[[2]] %>%
+  select(country_code = countryiso3code, year = date, income = value) %>%
+  filter(!is.na(income)) %>%  
+  filter(country_code != "")
+
+head(df_income)
+```
+
+```{R, results = "hide"}
+url_crime <- "http://api.worldbank.org/v2/country/all/indicator/VC.IHR.PSRC.P5?format=json&date=2015"
+
+response_crime <- GET(url_crime)
+data_crime <- content(response_crime, as = "text")
+json_crime <- fromJSON(data_crime, flatten = TRUE)
+
+df_crime <- json_crime[[2]] %>%
+  select(country_code = countryiso3code, year = date, crime_rate = value) %>%
+  filter(!is.na(crime_rate)) %>%
+  filter(country_code != "")
+
+head(df_crime)
+```
+
+```{R, results = "hide"}
+url_education <- "http://api.worldbank.org/v2/country/all/indicator/SE.ADT.LITR.ZS?format=json&date=2015"
+
+response_education <- GET(url_education)
+data_education <- content(response_education, as = "text")
+json_education <- fromJSON(data_education, flatten = TRUE)
+
+df_education <- json_education[[2]] %>%
+  select(country_code = countryiso3code, year = date, literacy_rate = value) %>%
+  filter(country_code != "")
+
+head(df_education)
+```
+
+```{R, results = "hide"}
+df_merged <- merge(df_income, df_crime, by = c("country_code", "year"))
+df_merged <- merge(df_merged, df_education, by = c("country_code", "year"))
+df_merged
+```
+### 1: Interactive Correlation Heatmap 
+This interactive heatmap shows the Spearman correlations between income, literacy rate, and crime rate. A strong positive correlation is seen between income and literacy, and moderate negative relationships between literacy and crime.
+```{r, warning = FALSE, message = FALSE}
+library(ggplot2)
+library(plotly)
+library(reshape2)
+
+cor_mat <- cor(df_merged[, c("income", "literacy_rate", "crime_rate")], method = "spearman", use = "complete.obs")
+
+cor_melt <- melt(cor_mat)
+
+p <- ggplot(cor_melt, aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient2(low = "red", mid = "white", high = "blue", midpoint = 0) +
+  geom_text(aes(label = round(value, 2)), color = "black") +
+  theme_minimal() +
+  labs(title = "Spearman Correlation Heatmap", x = "", y = "", fill = "ρ")
+
+ggplotly(p)
+```
+### 2: Interactive Scatterplot (Income vs Crime Rate)
+This scatterplot shows the relationship between income and crime rates after log transformation. A weak negative trend is observed which means higher-income countries tend to have lower crime rates, although the spread remains wide, especially between low-income countries.
+```{r, warning = FALSE, message = FALSE}
+df_merged$log_income <- log(df_merged$income)
+df_merged$log_crime <- log(df_merged$crime_rate)
+
+plot_ly(
+  data = df_merged,
+  x = ~log_income,
+  y = ~log_crime,
+  type = "scatter",
+  mode = "markers",
+  text = ~paste("Country:", country_code, "<br>Income:", round(income, 2), "<br>Crime Rate:", round(crime_rate, 2)),
+  marker = list(size = 8, color = 'blue', opacity = 0.6)
+) %>%
+  layout(
+    title = "Log(Income) vs Log(Crime Rate)",
+    xaxis = list(title = "Log(GDP per Capita)"),
+    yaxis = list(title = "Log(Crime Rate)")
+  )
+```
+### 3: Interactive Scatterplot (Literacy Rate vs Log Crime Rate)
+This interactive scatterplot shows a moderate negative relationship between literacy rate and crime. Countries with higher literacy levels tend to have lower crime rates, though the relationship is not perfect. Hover to see details for each region/country.
+```{r, warning = FALSE, message = FALSE}
+df_merged$log_crime <- log(df_merged$crime_rate)
+
+plot_ly(
+  data = df_merged,
+  x = ~literacy_rate,
+  y = ~log_crime,
+  type = "scatter",
+  mode = "markers",
+  text = ~paste("Country:", country_code, "<br>Literacy Rate:", literacy_rate, "<br>Crime Rate:", round(crime_rate, 2)),
+  marker = list(size = 8, color = 'darkgreen', opacity = 0.6)
+) %>%
+  layout(
+    title = "Literacy Rate vs Log(Crime Rate)",
+    xaxis = list(title = "Literacy Rate (%)"),
+    yaxis = list(title = "Log(Crime Rate)")
+  )
+```
+### 4: Interactive Boxplot (Crime Rate by Income Group)
+This boxplot shows how crime rates vary across income groups. Lower-income countries tend to have higher crime rates and more variability. High-income countries have lower median crime rates with fewer outliers. Hover over points to view country-level data.
+```{r, warning = FALSE, message = FALSE}
+df_merged$log_crime <- log(df_merged$crime_rate)
+
+plot_ly(
+  data = df_merged,
+  x = ~literacy_rate,
+  y = ~log_crime,
+  type = "scatter",
+  mode = "markers",
+  text = ~paste("Country:", country_code, "<br>Literacy Rate:", literacy_rate, "<br>Crime Rate:", round(crime_rate, 2)),
+  marker = list(size = 8, color = 'darkgreen', opacity = 0.6)
+) %>%
+  layout(
+    title = "Literacy Rate vs Log(Crime Rate)",
+    xaxis = list(title = "Literacy Rate (%)"),
+    yaxis = list(title = "Log(Crime Rate)")
+  )
+```
+### 5: Interactive Boxplot (Crime Rate by Income Group)
+This density plot shows how the distribution of crime rates varies by income group. Lower-income countries tend to cluster around higher crime rates, while high-income countries are more concentrated at lower crime levels.
+```{r, warning = FALSE, message = FALSE}
+df_merged$income_group <- cut(
+  df_merged$income,
+  breaks = c(0, 1045, 4125, 12736, Inf),
+  labels = c("Low", "Lower-Middle", "Upper-Middle", "High")
+)
+
+plot_ly(type = "scatter", mode = "lines") %>%
+  add_trace(
+    data = df_merged %>% filter(income_group == "Low"),
+    x = ~density(log_crime, na.rm = TRUE)$x,
+    y = ~density(log_crime, na.rm = TRUE)$y,
+    name = "Low",
+    fill = "tozeroy",
+    line = list(color = "green")
+  ) %>%
+  add_trace(
+    data = df_merged %>% filter(income_group == "Lower-Middle"),
+    x = ~density(log_crime, na.rm = TRUE)$x,
+    y = ~density(log_crime, na.rm = TRUE)$y,
+    name = "Lower-Middle",
+    fill = "tozeroy",
+    line = list(color = "blue")
+  ) %>%
+  add_trace(
+    data = df_merged %>% filter(income_group == "Upper-Middle"),
+    x = ~density(log_crime, na.rm = TRUE)$x,
+    y = ~density(log_crime, na.rm = TRUE)$y,
+    name = "Upper-Middle",
+    fill = "tozeroy",
+    line = list(color = "purple")
+  ) %>%
+  add_trace(
+    data = df_merged %>% filter(income_group == "High"),
+    x = ~density(log_crime, na.rm = TRUE)$x,
+    y = ~density(log_crime, na.rm = TRUE)$y,
+    name = "High",
+    fill = "tozeroy",
+    line = list(color = "red")
+  ) %>%
+  layout(
+    title = "Density of Log(Crime Rate) by Income Group",
+    xaxis = list(title = "Log(Crime Rate)"),
+    yaxis = list(title = "Density"),
+    hovermode = "x unified"
+  )
+```
