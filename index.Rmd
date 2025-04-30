@@ -134,22 +134,29 @@ plot_ly(
 ### 4: Interactive Boxplot (Crime Rate by Income Group)
 This boxplot shows how crime rates vary across income groups. Lower-income countries tend to have higher crime rates and more variability. High-income countries have lower median crime rates with fewer outliers. Hover over points to view country-level data.
 ```{r, warning = FALSE, message = FALSE}
-df_merged$log_crime <- log(df_merged$crime_rate)
+df_merged$income_group <- cut(
+  df_merged$income,
+  breaks = c(0, 1035, 4045, 12535, Inf),
+  labels = c("Low", "Lower-Middle", "Upper-Middle", "High")
+)
 
 plot_ly(
   data = df_merged,
-  x = ~literacy_rate,
+  x = ~income_group,
   y = ~log_crime,
-  type = "scatter",
-  mode = "markers",
-  text = ~paste("Country:", country_code, "<br>Literacy Rate:", literacy_rate, "<br>Crime Rate:", round(crime_rate, 2)),
-  marker = list(size = 8, color = 'darkgreen', opacity = 0.6)
+  type = "box",
+  boxpoints = "all",
+  jitter = 0.3,
+  pointpos = -1.8,
+  text = ~paste("Country:", country_code, "<br>Log(Crime):", round(log_crime, 2)),
+  marker = list(color = 'rgba(7, 164, 181, 0.6)')
 ) %>%
   layout(
-    title = "Literacy Rate vs Log(Crime Rate)",
-    xaxis = list(title = "Literacy Rate (%)"),
+    title = "Crime Rate by Income Group",
+    xaxis = list(title = "Income Group"),
     yaxis = list(title = "Log(Crime Rate)")
   )
+
 ```
 ### 5: Interactive Boxplot (Crime Rate by Income Group)
 This density plot shows how the distribution of crime rates varies by income group. Lower-income countries tend to cluster around higher crime rates, while high-income countries are more concentrated at lower crime levels.
