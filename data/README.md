@@ -6,7 +6,7 @@ This project uses publicly available datasets from the World Bank API (2015) for
 - Literacy rate: `SE.ADT.LITR.ZS`
 - Crime rate (homicides per 100,000): `VC.IHR.PSRC.P5`
 
-All datasets used in this project consist of 45 observations (countries) with complete data for 2015.
+All datasets used in this project consist of 45 observations (regions/countries) with complete data for 2015.
 
 To access these datasets:
 
